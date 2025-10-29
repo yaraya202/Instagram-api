@@ -6,13 +6,11 @@ const path = require('path');
 const app = express();
 const PORT = 5000;
 
-// yt-dlp path (Ubuntu pe yeh hoga)
+// yt-dlp path
 const ytDlpPath = '/usr/bin/yt-dlp';
 const cookiesPath = path.join(__dirname, 'cookies.txt');
 
-const ytDlpWrap = new YTDlpWrap({
-  ytDlpPath
-});
+const ytDlpWrap = new YTDlpWrap({ ytDlpPath });
 
 app.use(cors());
 app.use(express.json());
@@ -22,7 +20,7 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Helper: Common yt-dlp args
+// Common args
 const getCommonArgs = () => [
   '--cookies', cookiesPath,
   '--user-agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -37,45 +35,42 @@ const getCommonArgs = () => [
   '--no-check-certificate'
 ];
 
-// ==================== /api/info ====================
+// /api/info
 app.get('/api/info', async (req, res) => {
   try {
     const { url } = req.query;
-    if (!url) return res.status(400).json({ error: 'URL parameter is required' });
+    if (!url) return res.status(400).json({ error: 'URL required' });
 
-    const info = await ytDlpWrap.getVideoInfo(url, getCommonArgs());
-
-    const response = {
-      title: info.title || 'Unknown Title',
+    const info = await ytDlpWrap.getVideoInfo([url, ...getCommonArgs()]);
+    res.json({
+      title: info.title || 'Unknown',
       author: info.uploader || info.channel || 'Unknown',
       lengthSeconds: parseInt(info.duration) || 0,
       viewCount: parseInt(info.view_count || 0),
       thumbnail: info.thumbnail || '',
-      description: info.description?.slice(0, 500) || 'No description available'
-    };
-
-    res.json(response);
+      description: (info.description || '').slice(0, 500)
+    });
   } catch (error) {
-    console.error('Error fetching video info:', error.message);
-    res.status(500).json({ error: 'Failed to fetch video information' });
+    console.error('Info error:', error.message);
+    res.status(500).json({ error: 'Failed to fetch info' });
   }
 });
 
-// ==================== /api/download/audio ====================
+// /api/download/audio
 app.get('/api/download/audio', async (req, res) => {
   try {
     const { url } = req.query;
-    if (!url) return res.status(400).json({ error: 'URL parameter is required' });
+    if (!url) return res.status(400).json({ error: 'URL required' });
 
-    const info = await ytDlpWrap.getVideoInfo(url, getCommonArgs());
+    const info = await ytDlpWrap.getVideoInfo([url, ...getCommonArgs()]);
     const title = (info.title || 'audio').replace(/[^\w\s]/gi, '').replace(/\s+/g, '_');
 
     res.header('Content-Disposition', `attachment; filename="${title}.mp3"`);
     res.header('Content-Type', 'audio/mpeg');
 
-    const audioArgs = [
-      ...getCommonArgs(),
+    const args = [
       url,
+      ...getCommonArgs(),
       '-f', 'bestaudio/best',
       '-x',
       '--audio-format', 'mp3',
@@ -83,90 +78,73 @@ app.get('/api/download/audio', async (req, res) => {
       '-o', '-'
     ];
 
-    const readable = ytDlpWrap.execStream(audioArgs);
-    readable.pipe(res);
+    const stream = ytDlpWrap.execStream(args);
+    stream.pipe(res);
 
-    readable.on('error', (error) => {
-      console.error('Audio stream error:', error.message);
-      if (!res.headersSent) {
-        res.status(500).json({ error: 'Failed to download audio' });
-      }
+    stream.on('error', (err) => {
+      if (!res.headersSent) res.status(500).json({ error: 'Stream failed' });
     });
-
   } catch (error) {
-    console.error('Error downloading audio:', error.message);
-    if (!res.headersSent) {
-      res.status(500).json({ error: 'Failed to download audio' });
-    }
+    if (!res.headersSent) res.status(500).json({ error: 'Download failed' });
   }
 });
 
-// ==================== /api/download/video ====================
+// /api/download/video
 app.get('/api/download/video', async (req, res) => {
   try {
     const { url } = req.query;
-    if (!url) return res.status(400).json({ error: 'URL parameter is required' });
+    if (!url) return res.status(400).json({ error: 'URL required' });
 
-    const info = await ytDlpWrap.getVideoInfo(url, getCommonArgs());
+    const info = await ytDlpWrap.getVideoInfo([url, ...getCommonArgs()]);
     const title = (info.title || 'video').replace(/[^\w\s]/gi, '').replace(/\s+/g, '_');
 
     res.header('Content-Disposition', `attachment; filename="${title}.mp4"`);
     res.header('Content-Type', 'video/mp4');
 
-    const videoArgs = [
-      ...getCommonArgs(),
+    const args = [
       url,
+      ...getCommonArgs(),
       '-f', 'bestvideo[height<=480]+bestaudio/best[height<=480]',
       '--merge-output-format', 'mp4',
       '-o', '-'
     ];
 
-    const readable = ytDlpWrap.execStream(videoArgs);
-    readable.pipe(res);
+    const stream = ytDlpWrap.execStream(args);
+    stream.pipe(res);
 
-    readable.on('error', (error) => {
-      console.error('Video stream error:', error.message);
-      if (!res.headersSent) {
-        res.status(500).json({ error: 'Failed to download video' });
-      }
+    stream.on('error', (err) => {
+      if (!res.headersSent) res.status(500).json({ error: 'Stream failed' });
     });
-
   } catch (error) {
-    console.error('Error downloading video:', error.message);
-    if (!res.headersSent) {
-      res.status(500).json({ error: 'Failed to download video' });
-    }
+    if (!res.headersSent) res.status(500).json({ error: 'Download failed' });
   }
 });
 
-// ==================== /api/get (Frontend ke liye) ====================
+// /api/get
 app.get('/api/get', async (req, res) => {
   try {
     const { url } = req.query;
-    if (!url) return res.status(400).json({ error: 'URL parameter is required' });
+    if (!url) return res.status(400).json({ error: 'URL required' });
 
-    const info = await ytDlpWrap.getVideoInfo(url, getCommonArgs());
-    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    const info = await ytDlpWrap.getVideoInfo([url, ...getCommonArgs()]);
+    const base = `${req.protocol}://${req.get('host')}`;
 
-    const response = {
+    res.json({
       title: info.title || 'Unknown',
       thumbnail: info.thumbnail || '',
       author: info.uploader || info.channel || 'Unknown',
       duration: parseInt(info.duration) || 0,
       views: parseInt(info.view_count || 0),
-      audioUrl: `${baseUrl}/api/download/audio?url=${encodeURIComponent(url)}`,
-      videoUrl: `${baseUrl}/api/download/video?url=${encodeURIComponent(url)}`
-    };
-
-    res.json(response);
+      audioUrl: `${base}/api/download/audio?url=${encodeURIComponent(url)}`,
+      videoUrl: `${base}/api/download/video?url=${encodeURIComponent(url)}`
+    });
   } catch (error) {
-    console.error('Error fetching data:', error.message);
-    res.status(500).json({ error: 'Failed to fetch video data' });
+    res.status(500).json({ error: 'Failed to fetch data' });
   }
 });
 
-// ==================== Start Server ====================
+// Start server
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`YouTube Downloader API running on http://0.0.0.0:${PORT}`);
-  console.log(`Make sure cookies.txt is in: ${cookiesPath}`);
+  console.log(`API running on http://0.0.0.0:${PORT}`);
+  console.log(`cookies.txt path: ${cookiesPath}`);
 });
