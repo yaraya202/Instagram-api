@@ -46,51 +46,6 @@ app.get('/api/info', async (req, res) => {
   }
 });
 
-app.get('/api/download/video', async (req, res) => {
-  try {
-    const { url } = req.query;
-    
-    if (!url) {
-      return res.status(400).json({ error: 'URL parameter is required' });
-    }
-
-    const validateResult = play.yt_validate(url);
-    if (validateResult !== 'video') {
-      return res.status(400).json({ error: 'Invalid YouTube video URL' });
-    }
-
-    const info = await play.video_info(url);
-    const video = info.video_details;
-    const title = video.title.replace(/[^\w\s]/gi, '').replace(/\s+/g, '_');
-
-    const stream = await play.stream(url, {
-      discordPlayerCompatibility: false
-    });
-
-    res.header('Content-Disposition', `attachment; filename="${title}.mp4"`);
-    res.header('Content-Type', stream.type || 'video/mp4');
-
-    stream.stream.pipe(res);
-    
-    stream.stream.on('error', (error) => {
-      console.error('Stream error:', error);
-      if (!res.headersSent) {
-        res.status(500).json({ error: 'Failed to download video' });
-      }
-    });
-
-    res.on('close', () => {
-      stream.stream.destroy();
-    });
-
-  } catch (error) {
-    console.error('Error downloading video:', error);
-    if (!res.headersSent) {
-      res.status(500).json({ error: 'Failed to download video' });
-    }
-  }
-});
-
 app.get('/api/download/audio', async (req, res) => {
   try {
     const { url } = req.query;
@@ -109,8 +64,7 @@ app.get('/api/download/audio', async (req, res) => {
     const title = video.title.replace(/[^\w\s]/gi, '').replace(/\s+/g, '_');
 
     const stream = await play.stream(url, {
-      quality: 1,
-      discordPlayerCompatibility: false
+      quality: 2
     });
 
     res.header('Content-Disposition', `attachment; filename="${title}.mp3"`);
@@ -138,5 +92,5 @@ app.get('/api/download/audio', async (req, res) => {
 });
 
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`YouTube Downloader API running on http://0.0.0.0:${PORT}`);
+  console.log(`YouTube Audio Downloader API running on http://0.0.0.0:${PORT}`);
 });
