@@ -6,7 +6,6 @@ const path = require('path');
 const app = express();
 const PORT = 5000;
 
-// yt-dlp path
 const ytDlpPath = '/usr/bin/yt-dlp';
 const cookiesPath = path.join(__dirname, 'cookies.txt');
 
@@ -20,7 +19,6 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Common args
 const getCommonArgs = () => [
   '--cookies', cookiesPath,
   '--user-agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -80,10 +78,7 @@ app.get('/api/download/audio', async (req, res) => {
 
     const stream = ytDlpWrap.execStream(args);
     stream.pipe(res);
-
-    stream.on('error', (err) => {
-      if (!res.headersSent) res.status(500).json({ error: 'Stream failed' });
-    });
+    stream.on('error', () => { if (!res.headersSent) res.status(500).json({ error: 'Stream failed' }); });
   } catch (error) {
     if (!res.headersSent) res.status(500).json({ error: 'Download failed' });
   }
@@ -111,10 +106,7 @@ app.get('/api/download/video', async (req, res) => {
 
     const stream = ytDlpWrap.execStream(args);
     stream.pipe(res);
-
-    stream.on('error', (err) => {
-      if (!res.headersSent) res.status(500).json({ error: 'Stream failed' });
-    });
+    stream.on('error', () => { if (!res.headersSent) res.status(500).json({ error: 'Stream failed' }); });
   } catch (error) {
     if (!res.headersSent) res.status(500).json({ error: 'Download failed' });
   }
@@ -143,7 +135,6 @@ app.get('/api/get', async (req, res) => {
   }
 });
 
-// Start server
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`API running on http://0.0.0.0:${PORT}`);
   console.log(`cookies.txt path: ${cookiesPath}`);
