@@ -1,5 +1,5 @@
 const express = require('express');
-const ytdl = require('@distube/ytdl-core');
+const play = require('play-dl');
 const cors = require('cors');
 const path = require('path');
 
@@ -22,18 +22,21 @@ app.get('/api/info', async (req, res) => {
       return res.status(400).json({ error: 'URL parameter is required' });
     }
 
-    if (!ytdl.validateURL(url)) {
-      return res.status(400).json({ error: 'Invalid YouTube URL' });
+    const validateResult = play.yt_validate(url);
+    if (validateResult !== 'video') {
+      return res.status(400).json({ error: 'Invalid YouTube video URL' });
     }
 
-    const info = await ytdl.getInfo(url);
+    const info = await play.video_info(url);
+    const video = info.video_details;
+    
     const videoDetails = {
-      title: info.videoDetails.title,
-      author: info.videoDetails.author.name,
-      lengthSeconds: info.videoDetails.lengthSeconds,
-      viewCount: info.videoDetails.viewCount,
-      thumbnail: info.videoDetails.thumbnails[0].url,
-      description: info.videoDetails.description
+      title: video.title,
+      author: video.channel.name,
+      lengthSeconds: video.durationInSec,
+      viewCount: video.views,
+      thumbnail: video.thumbnails[0].url,
+      description: video.description || 'No description available'
     };
 
     res.json(videoDetails);
@@ -51,24 +54,40 @@ app.get('/api/download/video', async (req, res) => {
       return res.status(400).json({ error: 'URL parameter is required' });
     }
 
-    if (!ytdl.validateURL(url)) {
-      return res.status(400).json({ error: 'Invalid YouTube URL' });
+    const validateResult = play.yt_validate(url);
+    if (validateResult !== 'video') {
+      return res.status(400).json({ error: 'Invalid YouTube video URL' });
     }
 
-    const info = await ytdl.getInfo(url);
-    const title = info.videoDetails.title.replace(/[^\w\s]/gi, '');
+    const info = await play.video_info(url);
+    const video = info.video_details;
+    const title = video.title.replace(/[^\w\s]/gi, '').replace(/\s+/g, '_');
+
+    const stream = await play.stream(url, {
+      discordPlayerCompatibility: false
+    });
 
     res.header('Content-Disposition', `attachment; filename="${title}.mp4"`);
-    res.header('Content-Type', 'video/mp4');
+    res.header('Content-Type', stream.type || 'video/mp4');
 
-    ytdl(url, {
-      quality: 'highest',
-      filter: 'videoandaudio'
-    }).pipe(res);
+    stream.stream.pipe(res);
+    
+    stream.stream.on('error', (error) => {
+      console.error('Stream error:', error);
+      if (!res.headersSent) {
+        res.status(500).json({ error: 'Failed to download video' });
+      }
+    });
+
+    res.on('close', () => {
+      stream.stream.destroy();
+    });
 
   } catch (error) {
     console.error('Error downloading video:', error);
-    res.status(500).json({ error: 'Failed to download video' });
+    if (!res.headersSent) {
+      res.status(500).json({ error: 'Failed to download video' });
+    }
   }
 });
 
@@ -80,24 +99,41 @@ app.get('/api/download/audio', async (req, res) => {
       return res.status(400).json({ error: 'URL parameter is required' });
     }
 
-    if (!ytdl.validateURL(url)) {
-      return res.status(400).json({ error: 'Invalid YouTube URL' });
+    const validateResult = play.yt_validate(url);
+    if (validateResult !== 'video') {
+      return res.status(400).json({ error: 'Invalid YouTube video URL' });
     }
 
-    const info = await ytdl.getInfo(url);
-    const title = info.videoDetails.title.replace(/[^\w\s]/gi, '');
+    const info = await play.video_info(url);
+    const video = info.video_details;
+    const title = video.title.replace(/[^\w\s]/gi, '').replace(/\s+/g, '_');
+
+    const stream = await play.stream(url, {
+      quality: 1,
+      discordPlayerCompatibility: false
+    });
 
     res.header('Content-Disposition', `attachment; filename="${title}.mp3"`);
     res.header('Content-Type', 'audio/mpeg');
 
-    ytdl(url, {
-      quality: 'highestaudio',
-      filter: 'audioonly'
-    }).pipe(res);
+    stream.stream.pipe(res);
+    
+    stream.stream.on('error', (error) => {
+      console.error('Stream error:', error);
+      if (!res.headersSent) {
+        res.status(500).json({ error: 'Failed to download audio' });
+      }
+    });
+
+    res.on('close', () => {
+      stream.stream.destroy();
+    });
 
   } catch (error) {
     console.error('Error downloading audio:', error);
-    res.status(500).json({ error: 'Failed to download audio' });
+    if (!res.headersSent) {
+      res.status(500).json({ error: 'Failed to download audio' });
+    }
   }
 });
 
