@@ -74,12 +74,13 @@ Preferred communication style: Simple, everyday language.
 
 ### Core Libraries
 
-**ytdl-core** (v4.11.5)
+**@distube/ytdl-core** (v4.16.12)
 - **Purpose**: YouTube video information extraction and download functionality
 - **Usage**: 
   - `ytdl.validateURL()` - Validates YouTube URLs
   - `ytdl.getInfo()` - Retrieves video metadata
-  - Used for streaming video downloads (implementation details not fully visible in provided code)
+  - Used for streaming video downloads
+- **Note**: This is an actively maintained fork of ytdl-core that fixes compatibility issues with YouTube. The original ytdl-core is no longer maintained and was replaced on October 29, 2025 to resolve "Could not extract functions" errors
 - **Note**: This library interacts directly with YouTube without requiring API keys, but may be subject to rate limiting or changes in YouTube's structure
 
 **Express** (v5.1.0)
