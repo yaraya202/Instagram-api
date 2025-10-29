@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -116,6 +115,20 @@
         .btn-audio {
             background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
             color: white;
+        }
+        
+        .btn-audio:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 7px 14px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-video {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+
+        .btn-video:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 7px 14px rgba(240, 147, 251, 0.4);
         }
 
         .message {
@@ -249,8 +262,8 @@
 </head>
 <body>
     <div class="container">
-        <h1>🎵 YouTube Audio Downloader</h1>
-        <p class="subtitle">Download audio from YouTube videos</p>
+        <h1>🎵 YouTube Downloader</h1>
+        <p class="subtitle">Download audio or video from YouTube</p>
 
         <div class="input-group">
             <label for="videoUrl">YouTube URL:</label>
@@ -274,6 +287,10 @@
                 <span id="audioIcon">🎵</span>
                 <span id="audioText">Download Audio</span>
             </button>
+            <button class="btn-video" onclick="downloadVideo(event)">
+                <span id="videoIcon">▶️</span>
+                <span id="videoText">Download Video (360p)</span>
+            </button>
         </div>
 
         <div id="message" class="message"></div>
@@ -282,7 +299,7 @@
 
         <div class="api-docs">
             <h3>📡 API Endpoints</h3>
-            
+
             <div class="api-endpoint">
                 <span class="method">GET</span>
                 <code>/api/info?url={YouTube_URL}</code>
@@ -294,6 +311,12 @@
                 <code>/api/download/audio?url={YouTube_URL}</code>
                 <p style="margin-top: 8px; color: #666;">Download audio file</p>
             </div>
+
+            <div class="api-endpoint">
+                <span class="method">GET</span>
+                <code>/api/download/video?url={YouTube_URL}&quality=360p</code>
+                <p style="margin-top: 8px; color: #666;">Download video file (360p)</p>
+            </div>
         </div>
     </div>
 
@@ -302,7 +325,7 @@
             const messageDiv = document.getElementById('message');
             messageDiv.textContent = text;
             messageDiv.className = `message ${type} active`;
-            
+
             if (type === 'success') {
                 setTimeout(() => {
                     messageDiv.classList.remove('active');
@@ -310,14 +333,16 @@
             }
         }
 
-        function setLoading(button, isLoading) {
+        function setLoading(button, isLoading, type = 'info') {
             const icons = {
                 'audioIcon': '🎵',
-                'infoIcon': 'ℹ️'
+                'infoIcon': 'ℹ️',
+                'videoIcon': '▶️'
             };
             const texts = {
                 'audioText': 'Download Audio',
-                'infoText': 'Get Info'
+                'infoText': 'Get Info',
+                'videoText': 'Download Video (360p)'
             };
 
             const iconId = button.querySelector('[id$="Icon"]').id;
@@ -337,7 +362,7 @@
         async function getVideoInfo(event) {
             const url = document.getElementById('videoUrl').value.trim();
             const button = event.target.closest('button');
-            
+
             if (!url) {
                 showMessage('Please enter a YouTube URL', 'error');
                 return;
@@ -375,13 +400,13 @@
         async function downloadAudio(event) {
             const url = document.getElementById('videoUrl').value.trim();
             const button = event.target.closest('button');
-            
+
             if (!url) {
                 showMessage('Please enter a YouTube URL', 'error');
                 return;
             }
 
-            setLoading(button, true);
+            setLoading(button, true, 'audio');
             showMessage('Starting audio download...', 'info');
 
             try {
@@ -390,7 +415,29 @@
             } catch (error) {
                 showMessage('Failed to download audio', 'error');
             } finally {
-                setTimeout(() => setLoading(button, false), 1000);
+                setTimeout(() => setLoading(button, false, 'audio'), 1000);
+            }
+        }
+
+        async function downloadVideo(event) {
+            const url = document.getElementById('videoUrl').value.trim();
+            const button = event.target.closest('button');
+
+            if (!url) {
+                showMessage('Please enter a YouTube URL', 'error');
+                return;
+            }
+
+            setLoading(button, true, 'video');
+            showMessage('Starting video download (360p)...', 'info');
+
+            try {
+                window.location.href = `/api/download/video?url=${encodeURIComponent(url)}&quality=360p`;
+                showMessage('Video download started!', 'success');
+            } catch (error) {
+                showMessage('Failed to download video', 'error');
+            } finally {
+                setTimeout(() => setLoading(button, false, 'video'), 1000);
             }
         }
 

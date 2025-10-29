@@ -80,6 +80,44 @@ app.get('/api/download/audio', async (req, res) => {
   }
 });
 
+app.get('/api/download/video', async (req, res) => {
+  try {
+    const { url } = req.query;
+
+    if (!url) {
+      return res.status(400).json({ error: 'URL parameter is required' });
+    }
+
+    const info = await ytDlpWrap.getVideoInfo(url);
+    const title = info.title.replace(/[^\w\s]/gi, '').replace(/\s+/g, '_');
+
+    res.header('Content-Disposition', `attachment; filename="${title}.mp4"`);
+    res.header('Content-Type', 'video/mp4');
+
+    const readable = ytDlpWrap.execStream([
+      url,
+      '-f', 'bestvideo[height<=360]+bestaudio/best[height<=360]',
+      '--merge-output-format', 'mp4',
+      '-o', '-'
+    ]);
+
+    readable.pipe(res);
+
+    readable.on('error', (error) => {
+      console.error('Stream error:', error);
+      if (!res.headersSent) {
+        res.status(500).json({ error: 'Failed to download video' });
+      }
+    });
+
+  } catch (error) {
+    console.error('Error downloading video:', error);
+    if (!res.headersSent) {
+      res.status(500).json({ error: 'Failed to download video' });
+    }
+  }
+});
+
 app.get('/api/get', async (req, res) => {
   try {
     const { url } = req.query;
@@ -97,7 +135,8 @@ app.get('/api/get', async (req, res) => {
       author: info.uploader || info.channel,
       duration: parseInt(info.duration),
       views: parseInt(info.view_count || 0),
-      audioUrl: `${baseUrl}/api/download/audio?url=${encodeURIComponent(url)}`
+      audioUrl: `${baseUrl}/api/download/audio?url=${encodeURIComponent(url)}`,
+      videoUrl: `${baseUrl}/api/download/video?url=${encodeURIComponent(url)}`
     };
 
     res.json(response);
