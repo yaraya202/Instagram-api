@@ -33,13 +33,20 @@ const getCommonArgs = () => [
   '--no-check-certificate'
 ];
 
+// Helper: Get video info using --dump-json
+const getVideoInfo = async (url) => {
+  const args = [url, ...getCommonArgs(), '--dump-json'];
+  const output = await ytDlpWrap.execPromise(args);
+  return JSON.parse(output);
+};
+
 // /api/info
 app.get('/api/info', async (req, res) => {
   try {
     const { url } = req.query;
     if (!url) return res.status(400).json({ error: 'URL required' });
 
-    const info = await ytDlpWrap.getVideoInfo([url, ...getCommonArgs()]);
+    const info = await getVideoInfo(url);
     res.json({
       title: info.title || 'Unknown',
       author: info.uploader || info.channel || 'Unknown',
@@ -60,7 +67,7 @@ app.get('/api/download/audio', async (req, res) => {
     const { url } = req.query;
     if (!url) return res.status(400).json({ error: 'URL required' });
 
-    const info = await ytDlpWrap.getVideoInfo([url, ...getCommonArgs()]);
+    const info = await getVideoInfo(url);
     const title = (info.title || 'audio').replace(/[^\w\s]/gi, '').replace(/\s+/g, '_');
 
     res.header('Content-Disposition', `attachment; filename="${title}.mp3"`);
@@ -90,7 +97,7 @@ app.get('/api/download/video', async (req, res) => {
     const { url } = req.query;
     if (!url) return res.status(400).json({ error: 'URL required' });
 
-    const info = await ytDlpWrap.getVideoInfo([url, ...getCommonArgs()]);
+    const info = await getVideoInfo(url);
     const title = (info.title || 'video').replace(/[^\w\s]/gi, '').replace(/\s+/g, '_');
 
     res.header('Content-Disposition', `attachment; filename="${title}.mp4"`);
@@ -118,7 +125,7 @@ app.get('/api/get', async (req, res) => {
     const { url } = req.query;
     if (!url) return res.status(400).json({ error: 'URL required' });
 
-    const info = await ytDlpWrap.getVideoInfo([url, ...getCommonArgs()]);
+    const info = await getVideoInfo(url);
     const base = `${req.protocol}://${req.get('host')}`;
 
     res.json({
