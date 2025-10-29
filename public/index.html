@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Video Downloader</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2em;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 0.9em;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 500;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        button {
+            flex: 1;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-video {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-video:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-audio {
+            background: #764ba2;
+            color: white;
+        }
+
+        .btn-audio:hover {
+            background: #653a8a;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(118, 75, 162, 0.4);
+        }
+
+        .btn-info {
+            background: #f0f0f0;
+            color: #333;
+        }
+
+        .btn-info:hover {
+            background: #e0e0e0;
+            transform: translateY(-2px);
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        .video-info {
+            background: #f9f9f9;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+            display: none;
+        }
+
+        .video-info.active {
+            display: block;
+        }
+
+        .video-info img {
+            width: 100%;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+
+        .video-info h3 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .video-info p {
+            color: #666;
+            margin-bottom: 8px;
+            font-size: 0.9em;
+        }
+
+        .message {
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 15px;
+            display: none;
+            text-align: center;
+        }
+
+        .message.active {
+            display: block;
+        }
+
+        .message.error {
+            background: #fee;
+            color: #c33;
+            border: 1px solid #fcc;
+        }
+
+        .message.success {
+            background: #efe;
+            color: #3c3;
+            border: 1px solid #cfc;
+        }
+
+        .message.info {
+            background: #eef;
+            color: #33c;
+            border: 1px solid #ccf;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 0.6s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .api-docs {
+            margin-top: 30px;
+            padding-top: 30px;
+            border-top: 2px solid #e0e0e0;
+        }
+
+        .api-docs h3 {
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        .api-endpoint {
+            background: #f9f9f9;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85em;
+        }
+
+        .api-endpoint code {
+            color: #667eea;
+            word-break: break-all;
+        }
+
+        .method {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            margin-right: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎬 YouTube Downloader</h1>
+        <p class="subtitle">Download videos and audio from YouTube</p>
+
+        <div class="input-group">
+            <label for="videoUrl">YouTube URL:</label>
+            <input 
+                type="text" 
+                id="videoUrl" 
+                placeholder="https://www.youtube.com/watch?v=..."
+                autocomplete="off"
+            >
+        </div>
+
+        <div class="button-group">
+            <button class="btn-info" onclick="getVideoInfo(event)">
+                <span id="infoIcon">ℹ️</span>
+                <span id="infoText">Get Info</span>
+            </button>
+        </div>
+
+        <div class="button-group">
+            <button class="btn-video" onclick="downloadVideo(event)">
+                <span id="videoIcon">🎥</span>
+                <span id="videoText">Download Video</span>
+            </button>
+            <button class="btn-audio" onclick="downloadAudio(event)">
+                <span id="audioIcon">🎵</span>
+                <span id="audioText">Download Audio</span>
+            </button>
+        </div>
+
+        <div id="message" class="message"></div>
+
+        <div id="videoInfo" class="video-info"></div>
+
+        <div class="api-docs">
+            <h3>📡 API Endpoints:</h3>
+            
+            <div class="api-endpoint">
+                <span class="method">GET</span>
+                <code>/api/info?url={YouTube_URL}</code>
+                <p style="margin-top: 8px; color: #666;">Get video information</p>
+            </div>
+
+            <div class="api-endpoint">
+                <span class="method">GET</span>
+                <code>/api/download/video?url={YouTube_URL}</code>
+                <p style="margin-top: 8px; color: #666;">Download video file</p>
+            </div>
+
+            <div class="api-endpoint">
+                <span class="method">GET</span>
+                <code>/api/download/audio?url={YouTube_URL}</code>
+                <p style="margin-top: 8px; color: #666;">Download audio file</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function showMessage(text, type) {
+            const messageDiv = document.getElementById('message');
+            messageDiv.textContent = text;
+            messageDiv.className = `message ${type} active`;
+            
+            if (type === 'success') {
+                setTimeout(() => {
+                    messageDiv.classList.remove('active');
+                }, 3000);
+            }
+        }
+
+        function setLoading(button, isLoading) {
+            const icons = {
+                'videoIcon': '🎥',
+                'audioIcon': '🎵',
+                'infoIcon': 'ℹ️'
+            };
+            const texts = {
+                'videoText': 'Download Video',
+                'audioText': 'Download Audio',
+                'infoText': 'Get Info'
+            };
+
+            const iconId = button.querySelector('[id$="Icon"]').id;
+            const textId = button.querySelector('[id$="Text"]').id;
+
+            if (isLoading) {
+                button.querySelector(`#${iconId}`).innerHTML = '<span class="loading"></span>';
+                button.disabled = true;
+            } else {
+                button.querySelector(`#${iconId}`).textContent = icons[iconId];
+                button.querySelector(`#${textId}`).textContent = texts[textId];
+                button.disabled = false;
+            }
+        }
+
+        async function getVideoInfo(event) {
+            const url = document.getElementById('videoUrl').value.trim();
+            const button = event.target.closest('button');
+            
+            if (!url) {
+                showMessage('Please enter a YouTube URL', 'error');
+                return;
+            }
+
+            setLoading(button, true);
+            showMessage('Fetching video information...', 'info');
+
+            try {
+                const response = await fetch(`/api/info?url=${encodeURIComponent(url)}`);
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Failed to fetch video info');
+                }
+
+                const videoInfoDiv = document.getElementById('videoInfo');
+                videoInfoDiv.innerHTML = `
+                    <img src="${data.thumbnail}" alt="${data.title}">
+                    <h3>${data.title}</h3>
+                    <p><strong>Author:</strong> ${data.author}</p>
+                    <p><strong>Duration:</strong> ${Math.floor(data.lengthSeconds / 60)}:${(data.lengthSeconds % 60).toString().padStart(2, '0')}</p>
+                    <p><strong>Views:</strong> ${parseInt(data.viewCount).toLocaleString()}</p>
+                `;
+                videoInfoDiv.classList.add('active');
+                showMessage('Video information loaded!', 'success');
+            } catch (error) {
+                showMessage(error.message, 'error');
+                document.getElementById('videoInfo').classList.remove('active');
+            } finally {
+                setLoading(button, false);
+            }
+        }
+
+        async function downloadVideo(event) {
+            const url = document.getElementById('videoUrl').value.trim();
+            const button = event.target.closest('button');
+            
+            if (!url) {
+                showMessage('Please enter a YouTube URL', 'error');
+                return;
+            }
+
+            setLoading(button, true);
+            showMessage('Starting video download...', 'info');
+
+            try {
+                window.location.href = `/api/download/video?url=${encodeURIComponent(url)}`;
+                showMessage('Video download started!', 'success');
+            } catch (error) {
+                showMessage('Failed to download video', 'error');
+            } finally {
+                setTimeout(() => setLoading(button, false), 1000);
+            }
+        }
+
+        async function downloadAudio(event) {
+            const url = document.getElementById('videoUrl').value.trim();
+            const button = event.target.closest('button');
+            
+            if (!url) {
+                showMessage('Please enter a YouTube URL', 'error');
+                return;
+            }
+
+            setLoading(button, true);
+            showMessage('Starting audio download...', 'info');
+
+            try {
+                window.location.href = `/api/download/audio?url=${encodeURIComponent(url)}`;
+                showMessage('Audio download started!', 'success');
+            } catch (error) {
+                showMessage('Failed to download audio', 'error');
+            } finally {
+                setTimeout(() => setLoading(button, false), 1000);
+            }
+        }
+
+        document.getElementById('videoUrl').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                const infoButton = document.querySelector('.btn-info');
+                infoButton.click();
+            }
+        });
+    </script>
+</body>
+</html>
