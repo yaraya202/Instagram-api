@@ -1,5 +1,6 @@
+
 const express = require('express');
-const play = require('play-dl');
+const ytdl = require('@distube/ytdl-core');
 const cors = require('cors');
 const path = require('path');
 
@@ -22,24 +23,23 @@ app.get('/api/info', async (req, res) => {
       return res.status(400).json({ error: 'URL parameter is required' });
     }
 
-    const validateResult = play.yt_validate(url);
-    if (validateResult !== 'video') {
+    if (!ytdl.validateURL(url)) {
       return res.status(400).json({ error: 'Invalid YouTube video URL' });
     }
 
-    const info = await play.video_info(url);
-    const video = info.video_details;
+    const info = await ytdl.getInfo(url);
+    const videoDetails = info.videoDetails;
     
-    const videoDetails = {
-      title: video.title,
-      author: video.channel.name,
-      lengthSeconds: video.durationInSec,
-      viewCount: video.views,
-      thumbnail: video.thumbnails[0].url,
-      description: video.description || 'No description available'
+    const response = {
+      title: videoDetails.title,
+      author: videoDetails.author.name,
+      lengthSeconds: parseInt(videoDetails.lengthSeconds),
+      viewCount: parseInt(videoDetails.viewCount),
+      thumbnail: videoDetails.thumbnails[videoDetails.thumbnails.length - 1].url,
+      description: videoDetails.description || 'No description available'
     };
 
-    res.json(videoDetails);
+    res.json(response);
   } catch (error) {
     console.error('Error fetching video info:', error);
     res.status(500).json({ error: 'Failed to fetch video information' });
@@ -54,25 +54,24 @@ app.get('/api/download/audio', async (req, res) => {
       return res.status(400).json({ error: 'URL parameter is required' });
     }
 
-    const validateResult = play.yt_validate(url);
-    if (validateResult !== 'video') {
+    if (!ytdl.validateURL(url)) {
       return res.status(400).json({ error: 'Invalid YouTube video URL' });
     }
 
-    const info = await play.video_info(url);
-    const video = info.video_details;
-    const title = video.title.replace(/[^\w\s]/gi, '').replace(/\s+/g, '_');
-
-    const stream = await play.stream(url, {
-      quality: 2
-    });
+    const info = await ytdl.getInfo(url);
+    const title = info.videoDetails.title.replace(/[^\w\s]/gi, '').replace(/\s+/g, '_');
 
     res.header('Content-Disposition', `attachment; filename="${title}.mp3"`);
     res.header('Content-Type', 'audio/mpeg');
 
-    stream.stream.pipe(res);
+    const audioStream = ytdl(url, {
+      quality: 'highestaudio',
+      filter: 'audioonly'
+    });
+
+    audioStream.pipe(res);
     
-    stream.stream.on('error', (error) => {
+    audioStream.on('error', (error) => {
       console.error('Stream error:', error);
       if (!res.headersSent) {
         res.status(500).json({ error: 'Failed to download audio' });
@@ -80,7 +79,7 @@ app.get('/api/download/audio', async (req, res) => {
     });
 
     res.on('close', () => {
-      stream.stream.destroy();
+      audioStream.destroy();
     });
 
   } catch (error) {
