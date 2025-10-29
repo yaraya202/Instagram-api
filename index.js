@@ -11,11 +11,14 @@ const ytDlpWrap = new YTDlpWrap();
 const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
 
 // Common options for all yt-dlp commands
+// Note: Cookies removed as they cause issues on VPS/restricted IPs
 const commonOptions = [
-  '--cookies', path.join(__dirname, 'cookies.txt'),
   '--user-agent', USER_AGENT,
   '--referer', 'https://www.youtube.com/',
-  '--no-check-certificates'
+  '--no-check-certificates',
+  '--socket-timeout', '30',
+  '--retries', '10',
+  '--fragment-retries', '10'
 ];
 
 app.use(cors());
