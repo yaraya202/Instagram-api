@@ -7,9 +7,6 @@ const path = require('path');
 const app = express();
 const PORT = 5000;
 
-// Agent to avoid some YouTube blocks
-const agent = ytdl.createAgent(require('fs').readFileSync(require('path').join(__dirname, 'node_modules', '@distube', 'ytdl-core', 'lib', 'info-extras.js')));
-
 app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));
