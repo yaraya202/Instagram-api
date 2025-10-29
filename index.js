@@ -7,6 +7,9 @@ const path = require('path');
 const app = express();
 const PORT = 5000;
 
+// Agent to avoid some YouTube blocks
+const agent = ytdl.createAgent(require('fs').readFileSync(require('path').join(__dirname, 'node_modules', '@distube', 'ytdl-core', 'lib', 'info-extras.js')));
+
 app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));
@@ -27,7 +30,14 @@ app.get('/api/info', async (req, res) => {
       return res.status(400).json({ error: 'Invalid YouTube video URL' });
     }
 
-    const info = await ytdl.getInfo(url);
+    const info = await ytdl.getInfo(url, {
+      requestOptions: {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Accept-Language': 'en-US,en;q=0.9'
+        }
+      }
+    });
     const videoDetails = info.videoDetails;
     
     const response = {
@@ -58,7 +68,15 @@ app.get('/api/download/audio', async (req, res) => {
       return res.status(400).json({ error: 'Invalid YouTube video URL' });
     }
 
-    const info = await ytdl.getInfo(url);
+    const info = await ytdl.getInfo(url, {
+      requestOptions: {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Accept-Language': 'en-US,en;q=0.9'
+        }
+      }
+    });
+    
     const title = info.videoDetails.title.replace(/[^\w\s]/gi, '').replace(/\s+/g, '_');
 
     res.header('Content-Disposition', `attachment; filename="${title}.mp3"`);
@@ -66,7 +84,13 @@ app.get('/api/download/audio', async (req, res) => {
 
     const audioStream = ytdl(url, {
       quality: 'highestaudio',
-      filter: 'audioonly'
+      filter: 'audioonly',
+      requestOptions: {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Accept-Language': 'en-US,en;q=0.9'
+        }
+      }
     });
 
     audioStream.pipe(res);
@@ -74,7 +98,7 @@ app.get('/api/download/audio', async (req, res) => {
     audioStream.on('error', (error) => {
       console.error('Stream error:', error);
       if (!res.headersSent) {
-        res.status(500).json({ error: 'Failed to download audio' });
+        res.status(500).json({ error: 'Failed to download audio. YouTube may be blocking requests.' });
       }
     });
 
