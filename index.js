@@ -80,6 +80,33 @@ app.get('/api/download/audio', async (req, res) => {
   }
 });
 
+app.get('/api/get', async (req, res) => {
+  try {
+    const { url } = req.query;
+
+    if (!url) {
+      return res.status(400).json({ error: 'URL parameter is required' });
+    }
+
+    const info = await ytDlpWrap.getVideoInfo(url);
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+
+    const response = {
+      title: info.title,
+      thumbnail: info.thumbnail,
+      author: info.uploader || info.channel,
+      duration: parseInt(info.duration),
+      views: parseInt(info.view_count || 0),
+      audioUrl: `${baseUrl}/api/download/audio?url=${encodeURIComponent(url)}`
+    };
+
+    res.json(response);
+  } catch (error) {
+    console.error('Error fetching data:', error);
+    res.status(500).json({ error: 'Failed to fetch video data' });
+  }
+});
+
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`YouTube Audio Downloader API running on http://0.0.0.0:${PORT}`);
 });
